@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Soenneker.Utils.File.Registrars;
 using Soenneker.Utils.Yaml.Abstract;
 
 namespace Soenneker.Utils.Yaml.Registrars;
@@ -14,7 +15,8 @@ public static class YamlUtilRegistrar
     /// </summary>
     public static IServiceCollection AddYamlUtilAsSingleton(this IServiceCollection services)
     {
-        services.TryAddSingleton<IYamlUtil, YamlUtil>();
+        services.AddFileUtilAsSingleton()
+                .TryAddSingleton<IYamlUtil, YamlUtil>();
 
         return services;
     }
@@ -24,7 +26,8 @@ public static class YamlUtilRegistrar
     /// </summary>
     public static IServiceCollection AddYamlUtilAsScoped(this IServiceCollection services)
     {
-        services.TryAddScoped<IYamlUtil, YamlUtil>();
+        services.AddFileUtilAsScoped()
+                .TryAddScoped<IYamlUtil, YamlUtil>();
 
         return services;
     }

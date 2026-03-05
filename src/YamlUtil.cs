@@ -4,10 +4,14 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using Soenneker.Enums.JsonLibrary;
 using Soenneker.Enums.JsonOptions;
 using Soenneker.Extensions.JsonElements;
 using Soenneker.Extensions.String;
+using Soenneker.Extensions.Task;
+using Soenneker.Utils.File.Abstract;
 using Soenneker.Utils.Json;
 using Soenneker.Utils.Yaml.Abstract;
 using YamlDotNet.Serialization;
@@ -24,6 +28,13 @@ public sealed class YamlUtil : IYamlUtil
     private static readonly IDeserializer _deserializer = new DeserializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance)
                                                                                    .IgnoreUnmatchedProperties()
                                                                                    .Build();
+
+    private IFileUtil _fileUtil;
+
+    public YamlUtil(IFileUtil fileUtil)
+    {
+        _fileUtil = fileUtil;
+    }
 
     public string ToYaml(object? value)
     {
@@ -115,6 +126,20 @@ public sealed class YamlUtil : IYamlUtil
         {
             return false;
         }
+    }
+
+    public async ValueTask SaveAsYaml(string sourcePath, string destinationPath, bool log = true, CancellationToken cancellationToken = default)
+    {
+        string content = await _fileUtil.Read(sourcePath, log, cancellationToken).NoSync();
+        string yaml = JsonToYaml(content) ?? string.Empty;
+        await _fileUtil.Write(destinationPath, yaml, log, cancellationToken).NoSync();
+    }
+
+    public async ValueTask SaveAsJson(string sourcePath, string destinationPath, bool log = true, CancellationToken cancellationToken = default)
+    {
+        string content = await _fileUtil.Read(sourcePath, log, cancellationToken).NoSync();
+        string json = YamlToJson(content) ?? "{}";
+        await _fileUtil.Write(destinationPath, json, log, cancellationToken).NoSync();
     }
 
     private static object? YamlObjectToJsonSafe(object? value)

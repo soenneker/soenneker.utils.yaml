@@ -1,5 +1,7 @@
 using System.Diagnostics.Contracts;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Soenneker.Utils.Yaml.Abstract;
 
@@ -90,4 +92,22 @@ public interface IYamlUtil
     /// <c>true</c> if deserialization succeeds; otherwise <c>false</c>.
     /// </returns>
     bool TryFromYaml<T>(string? yaml, out T? result);
+
+    /// <summary>
+    /// Reads a JSON file and writes the content as YAML to the destination path.
+    /// </summary>
+    /// <param name="sourcePath">Path to the source JSON file.</param>
+    /// <param name="destinationPath">Path where the YAML output is written.</param>
+    /// <param name="log">Whether to log the file operations.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    ValueTask SaveAsYaml(string sourcePath, string destinationPath, bool log = true, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reads a YAML file and writes the content as JSON to the destination path.
+    /// </summary>
+    /// <param name="sourcePath">Path to the source YAML file.</param>
+    /// <param name="destinationPath">Path where the JSON output is written.</param>
+    /// <param name="log">Whether to log the file operations.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    ValueTask SaveAsJson(string sourcePath, string destinationPath, bool log = true, CancellationToken cancellationToken = default);
 }
