@@ -29,7 +29,7 @@ public sealed class YamlUtil : IYamlUtil
                                                                                    .IgnoreUnmatchedProperties()
                                                                                    .Build();
 
-    private IFileUtil _fileUtil;
+    private readonly IFileUtil _fileUtil;
 
     public YamlUtil(IFileUtil fileUtil)
     {
