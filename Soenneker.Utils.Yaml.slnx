@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/.github/">
+    <File Path=".github/renovate.json" />
+  </Folder>
+  <Folder Name="/.github/workflows/">
+    <File Path=".github/workflows/build-and-test.yml" />
+    <File Path=".github/workflows/publish-package.yml" />
+  </Folder>
+  <Project Path="src/Soenneker.Utils.Yaml.csproj" />
+  <Project Path="test/Soenneker.Utils.Yaml.Tests/Soenneker.Utils.Yaml.Tests.csproj" />
+</Solution>
