@@ -47,7 +47,7 @@ public interface IYamlUtil
     /// A YAML string, or <see cref="string.Empty"/> when <paramref name="json"/> is <c>null</c> or whitespace.
     /// </returns>
     [Pure]
-    string JsonToYaml(string? json);
+    string? JsonToYaml(string? json);
 
     /// <summary>
     /// Converts YAML to JSON using default web-oriented JSON serializer options.
@@ -57,7 +57,7 @@ public interface IYamlUtil
     /// A JSON string, or <c>{}</c> when <paramref name="yaml"/> is <c>null</c> or whitespace.
     /// </returns>
     [Pure]
-    string YamlToJson(string? yaml);
+    string? YamlToJson(string? yaml);
 
     /// <summary>
     /// Converts YAML to JSON using the specified <see cref="JsonSerializerOptions"/>.

@@ -4,9 +4,11 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text.Json;
+using Soenneker.Enums.JsonLibrary;
+using Soenneker.Enums.JsonOptions;
 using Soenneker.Extensions.JsonElements;
 using Soenneker.Extensions.String;
-using Soenneker.Json.OptionsCollection;
+using Soenneker.Utils.Json;
 using Soenneker.Utils.Yaml.Abstract;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -59,9 +61,15 @@ public sealed class YamlUtil : IYamlUtil
         return ToYaml(graph);
     }
 
-    public string YamlToJson(string? yaml)
+    public string? YamlToJson(string? yaml)
     {
-        return YamlToJson(yaml, JsonOptionsCollection.WebOptions);
+        if (yaml.IsNullOrWhiteSpace())
+            return "{}";
+
+        object? obj = FromYaml(yaml);
+        object? jsonSafe = YamlObjectToJsonSafe(obj);
+
+        return JsonUtil.Serialize(jsonSafe, optionType: JsonOptionType.Web, JsonLibraryType.SystemTextJson);
     }
 
     public string YamlToJson(string? yaml, JsonSerializerOptions options)
