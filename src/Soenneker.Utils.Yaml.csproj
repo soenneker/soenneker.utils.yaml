@@ -46,7 +46,7 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.4" />
         <PackageReference Include="Soenneker.Extensions.JsonElements" Version="4.0.48" />
         <PackageReference Include="Soenneker.Utils.File" Version="4.0.2083" />
-        <PackageReference Include="Soenneker.Utils.Json" Version="4.0.2475" />
+        <PackageReference Include="Soenneker.Utils.Json" Version="4.0.2476" />
         <PackageReference Include="YamlDotNet" Version="16.3.0" />
     </ItemGroup>
 </Project>
