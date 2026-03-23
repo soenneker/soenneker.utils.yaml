@@ -208,7 +208,7 @@ public sealed class YamlUtilTests : FixturedUnitTest
     {
         const string yaml = "name: qux";
 
-        bool success = _util.TryFromYaml<SimpleDto>(yaml, out var result);
+        bool success = _util.TryFromYaml<SimpleDto>(yaml, out SimpleDto? result);
 
         success.Should()
                .BeTrue();
@@ -223,7 +223,7 @@ public sealed class YamlUtilTests : FixturedUnitTest
     {
         const string invalid = "not: valid: yaml: here:";
 
-        bool success = _util.TryFromYaml<object>(invalid, out var result);
+        bool success = _util.TryFromYaml<object>(invalid, out object? result);
 
         success.Should()
                .BeFalse();

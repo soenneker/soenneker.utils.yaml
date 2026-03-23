@@ -110,4 +110,6 @@ public interface IYamlUtil
     /// <param name="log">Whether to log the file operations.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     ValueTask SaveAsJson(string sourcePath, string destinationPath, bool log = true, CancellationToken cancellationToken = default);
+
+    string Normalize(string? yaml);
 }

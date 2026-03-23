@@ -142,6 +142,99 @@ public sealed class YamlUtil : IYamlUtil
         await _fileUtil.Write(destinationPath, json, log, cancellationToken).NoSync();
     }
 
+    public string Normalize(string? yaml)
+    {
+        if (string.IsNullOrWhiteSpace(yaml))
+            return string.Empty;
+
+        if (yaml[0] == '\uFEFF')
+            yaml = yaml[1..];
+
+        string text = yaml.Replace("\r\n", "\n").Replace('\r', '\n');
+        string[] lines = text.Split('\n');
+
+        var output = new List<string>(lines.Length);
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            string line = lines[i];
+            output.Add(line);
+
+            if (!IsBlockScalarHeader(line, out int headerIndent))
+                continue;
+
+            int j = i + 1;
+
+            while (j < lines.Length && IsWhitespaceOnly(lines[j]))
+            {
+                j++;
+            }
+
+            if (j >= lines.Length)
+                continue;
+
+            if (CountLeadingSpaces(lines[j]) > headerIndent)
+            {
+                i = j - 1;
+            }
+        }
+
+        return string.Join('\n', output);
+    }
+
+    private static bool IsBlockScalarHeader(string line, out int indent)
+    {
+        indent = 0;
+
+        if (string.IsNullOrEmpty(line))
+            return false;
+
+        indent = CountLeadingSpaces(line);
+        ReadOnlySpan<char> span = line.AsSpan(indent);
+
+        int colonIndex = span.IndexOf(':');
+        if (colonIndex < 0)
+            return false;
+
+        ReadOnlySpan<char> afterColon = span[(colonIndex + 1)..].TrimStart();
+
+        if (afterColon.IsEmpty)
+            return false;
+
+        char c = afterColon[0];
+        if (c is not ('|' or '>'))
+            return false;
+
+        if (afterColon.Length == 1)
+            return true;
+
+        char second = afterColon[1];
+        return second is '-' or '+' or '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9' or ' ' or '\t' or '#';
+    }
+
+    private static int CountLeadingSpaces(string value)
+    {
+        int i = 0;
+
+        while (i < value.Length && value[i] == ' ')
+        {
+            i++;
+        }
+
+        return i;
+    }
+
+    private static bool IsWhitespaceOnly(string value)
+    {
+        for (int i = 0; i < value.Length; i++)
+        {
+            if (!char.IsWhiteSpace(value[i]))
+                return false;
+        }
+
+        return true;
+    }
+
     private static object? YamlObjectToJsonSafe(object? value)
     {
         if (value is null)
