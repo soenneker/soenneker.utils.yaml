@@ -26,6 +26,7 @@ public sealed class YamlUtil : IYamlUtil
                                                                              .Build();
 
     private static readonly IDeserializer _deserializer = new DeserializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance)
+                                                                                   .WithAttemptingUnquotedStringTypeDeserialization()
                                                                                    .IgnoreUnmatchedProperties()
                                                                                    .Build();
 
