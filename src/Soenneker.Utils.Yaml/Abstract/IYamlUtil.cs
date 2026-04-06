@@ -62,6 +62,17 @@ public interface IYamlUtil
     string? YamlToJson(string? yaml);
 
     /// <summary>
+    /// Normalizes YAML into a JSON-safe shape by removing byte-order marks, normalizing line endings,
+    /// and breaking recursive alias/object cycles that cannot be represented in JSON.
+    /// </summary>
+    /// <param name="yaml">The YAML payload.</param>
+    /// <returns>
+    /// A sanitized YAML string, or <see cref="string.Empty"/> when <paramref name="yaml"/> is <c>null</c> or whitespace.
+    /// </returns>
+    [Pure]
+    string FixForJson(string? yaml);
+
+    /// <summary>
     /// Converts YAML to JSON using the specified <see cref="JsonSerializerOptions"/>.
     /// </summary>
     /// <param name="yaml">The YAML payload.</param>

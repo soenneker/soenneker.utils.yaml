@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -78,10 +79,21 @@ public sealed class YamlUtil : IYamlUtil
         if (yaml.IsNullOrWhiteSpace())
             return "{}";
 
-        object? obj = FromYaml(yaml);
+        object? obj = FromYaml(Normalize(yaml));
         object? jsonSafe = YamlObjectToJsonSafe(obj);
 
         return JsonUtil.Serialize(jsonSafe, optionType: JsonOptionType.Web, JsonLibraryType.SystemTextJson);
+    }
+
+    public string FixForJson(string? yaml)
+    {
+        if (yaml.IsNullOrWhiteSpace())
+            return string.Empty;
+
+        object? obj = FromYaml(Normalize(yaml));
+        object? jsonSafe = YamlObjectToJsonSafe(obj);
+
+        return ToYaml(jsonSafe);
     }
 
     public string YamlToJson(string? yaml, JsonSerializerOptions options)
@@ -89,7 +101,7 @@ public sealed class YamlUtil : IYamlUtil
         if (yaml.IsNullOrWhiteSpace())
             return "{}";
 
-        object? obj = FromYaml(yaml);
+        object? obj = FromYaml(Normalize(yaml));
         object? jsonSafe = YamlObjectToJsonSafe(obj);
 
         return JsonSerializer.Serialize(jsonSafe, options);
@@ -139,7 +151,8 @@ public sealed class YamlUtil : IYamlUtil
     public async ValueTask SaveAsJson(string sourcePath, string destinationPath, bool log = true, CancellationToken cancellationToken = default)
     {
         string content = await _fileUtil.Read(sourcePath, log, cancellationToken).NoSync();
-        string json = YamlToJson(content) ?? "{}";
+        string fixedYaml = FixForJson(content);
+        string json = YamlToJson(fixedYaml) ?? "{}";
         await _fileUtil.Write(destinationPath, json, log, cancellationToken).NoSync();
     }
 
@@ -238,6 +251,11 @@ public sealed class YamlUtil : IYamlUtil
 
     private static object? YamlObjectToJsonSafe(object? value)
     {
+        return YamlObjectToJsonSafe(value, new HashSet<object>(ReferenceEqualityComparer.Instance));
+    }
+
+    private static object? YamlObjectToJsonSafe(object? value, HashSet<object> recursionStack)
+    {
         if (value is null)
             return null;
 
@@ -248,42 +266,60 @@ public sealed class YamlUtil : IYamlUtil
         if (value is int or long or double or float or decimal or short or byte or sbyte or uint or ulong or ushort)
             return value;
 
-        if (value is IDictionary dict)
-        {
-            var result = new Dictionary<string, object?>(dict.Count, StringComparer.Ordinal);
+        bool shouldTrack = ShouldTrackByReference(value);
 
-            foreach (DictionaryEntry entry in dict)
+        if (shouldTrack && !recursionStack.Add(value))
+            return null;
+
+        try
+        {
+            if (value is IDictionary dict)
             {
-                string key = entry.Key switch
+                var result = new Dictionary<string, object?>(dict.Count, StringComparer.Ordinal);
+
+                foreach (DictionaryEntry entry in dict)
                 {
-                    null => string.Empty,
-                    string s => s,
-                    _ => entry.Key.ToString() ?? string.Empty
-                };
+                    string key = entry.Key switch
+                    {
+                        null => string.Empty,
+                        string s => s,
+                        _ => entry.Key.ToString() ?? string.Empty
+                    };
 
-                result[key] = YamlObjectToJsonSafe(entry.Value);
+                    result[key] = YamlObjectToJsonSafe(entry.Value, recursionStack);
+                }
+
+                return result;
             }
 
-            return result;
-        }
-
-        if (value is IEnumerable enumerable && value is not string)
-        {
-            if (value is ICollection col)
+            if (value is IEnumerable enumerable && value is not string)
             {
-                var list = new List<object?>(col.Count);
+                if (value is ICollection col)
+                {
+                    var list = new List<object?>(col.Count);
+                    foreach (object? item in enumerable)
+                        list.Add(YamlObjectToJsonSafe(item, recursionStack));
+                    return list;
+                }
+
+                var list2 = new List<object?>();
+
                 foreach (object? item in enumerable)
-                    list.Add(YamlObjectToJsonSafe(item));
-                return list;
+                    list2.Add(YamlObjectToJsonSafe(item, recursionStack));
+                return list2;
             }
 
-            var list2 = new List<object?>();
-
-            foreach (object? item in enumerable)
-                list2.Add(YamlObjectToJsonSafe(item));
-            return list2;
+            return value;
         }
+        finally
+        {
+            if (shouldTrack)
+                recursionStack.Remove(value);
+        }
+    }
 
-        return value;
+    private static bool ShouldTrackByReference(object value)
+    {
+        return value is not string && !value.GetType().IsValueType;
     }
 }
