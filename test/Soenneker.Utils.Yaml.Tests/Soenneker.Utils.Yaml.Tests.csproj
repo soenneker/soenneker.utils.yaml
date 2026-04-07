@@ -12,12 +12,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Compile Remove="NewFolder\**" />
-      <EmbeddedResource Remove="NewFolder\**" />
-      <None Remove="NewFolder\**" />
-    </ItemGroup>
-
-    <ItemGroup>
         <None Remove="appsettings.json" />
     </ItemGroup>
 
@@ -28,7 +22,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="AwesomeAssertions" Version="9.4.0" />
         <PackageReference Include="Soenneker.Tests.FixturedUnit" Version="4.0.2291" />
         <PackageReference Include="Soenneker.Utils.Test" Version="4.0.313" />
         <PackageReference Include="xUnit.v3" Version="3.2.2" />
@@ -40,7 +33,7 @@
 
     <ItemGroup>
         <Content Include="testconfig.json">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
     </ItemGroup>
 
