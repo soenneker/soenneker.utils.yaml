@@ -122,5 +122,10 @@ public interface IYamlUtil
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     ValueTask SaveAsJson(string sourcePath, string destinationPath, bool log = true, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Executes the normalize operation.
+    /// </summary>
+    /// <param name="yaml">The yaml.</param>
+    /// <returns>The result of the operation.</returns>
     string Normalize(string? yaml);
 }
