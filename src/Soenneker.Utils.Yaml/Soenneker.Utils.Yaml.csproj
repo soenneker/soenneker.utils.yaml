@@ -45,7 +45,7 @@
 
     <ItemGroup>
         <PackageReference Include="Soenneker.Extensions.JsonElements" Version="4.0.61" />
-        <PackageReference Include="Soenneker.Utils.Json" Version="4.0.2558" />
+        <PackageReference Include="Soenneker.Utils.Json" Version="4.0.2561" />
         <PackageReference Include="YamlDotNet" Version="18.0.0" />
     </ItemGroup>
 </Project>
