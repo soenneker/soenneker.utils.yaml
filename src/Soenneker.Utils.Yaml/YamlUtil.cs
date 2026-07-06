@@ -14,6 +14,7 @@ using Soenneker.Extensions.String;
 using Soenneker.Extensions.Task;
 using Soenneker.Utils.File.Abstract;
 using Soenneker.Utils.Json;
+using Soenneker.Utils.PooledStringBuilders;
 using Soenneker.Utils.Yaml.Abstract;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -23,6 +24,8 @@ namespace Soenneker.Utils.Yaml;
 ///<inheritdoc cref="IYamlUtil"/>
 public sealed class YamlUtil : IYamlUtil
 {
+    private const string TabIndentReplacement = "  ";
+
     private static readonly ISerializer _serializer = new SerializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance)
                                                                              .Build();
 
@@ -161,10 +164,7 @@ public sealed class YamlUtil : IYamlUtil
         if (string.IsNullOrWhiteSpace(yaml))
             return string.Empty;
 
-        if (yaml[0] == '\uFEFF')
-            yaml = yaml[1..];
-
-        string text = yaml.Replace("\r\n", "\n").Replace('\r', '\n');
+        string text = FixTabsInIndentation(yaml);
         string[] lines = text.Split('\n');
 
         var output = new List<string>(lines.Length);
@@ -194,6 +194,25 @@ public sealed class YamlUtil : IYamlUtil
         }
 
         return string.Join('\n', output);
+    }
+
+    public string FixTabsInIndentation(string? yaml)
+    {
+        if (string.IsNullOrWhiteSpace(yaml))
+            return string.Empty;
+
+        if (yaml[0] == '\uFEFF')
+            yaml = yaml[1..];
+
+        string text = yaml.Replace("\r\n", "\n").Replace('\r', '\n');
+        string[] lines = text.Split('\n');
+
+        for (var i = 0; i < lines.Length; i++)
+        {
+            lines[i] = FixTabsInLineIndentation(lines[i]);
+        }
+
+        return string.Join('\n', lines);
     }
 
     private static bool IsBlockScalarHeader(string line, out int indent)
@@ -247,6 +266,50 @@ public sealed class YamlUtil : IYamlUtil
         }
 
         return true;
+    }
+
+    private static string FixTabsInLineIndentation(string line)
+    {
+        var index = 0;
+        var hasTab = false;
+
+        while (index < line.Length)
+        {
+            char c = line[index];
+
+            if (c == '\t')
+            {
+                hasTab = true;
+                index++;
+                continue;
+            }
+
+            if (c == ' ')
+            {
+                index++;
+                continue;
+            }
+
+            break;
+        }
+
+        if (!hasTab)
+            return line;
+
+        using var builder = new PooledStringBuilder(line.Length + index);
+
+        for (var i = 0; i < index; i++)
+        {
+            if (line[i] == '\t')
+                builder.Append(TabIndentReplacement);
+            else
+                builder.Append(line[i]);
+        }
+
+        if (index < line.Length)
+            builder.Append(line.AsSpan(index));
+
+        return builder.ToString();
     }
 
     private static object? YamlObjectToJsonSafe(object? value)

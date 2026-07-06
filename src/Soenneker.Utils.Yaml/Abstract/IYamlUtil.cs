@@ -128,4 +128,14 @@ public interface IYamlUtil
     /// <param name="yaml">The yaml.</param>
     /// <returns>The result of the operation.</returns>
     string Normalize(string? yaml);
+
+    /// <summary>
+    /// Converts tab characters used in YAML indentation to spaces and normalizes line endings.
+    /// </summary>
+    /// <param name="yaml">The YAML payload.</param>
+    /// <returns>
+    /// A YAML string with space indentation, or <see cref="string.Empty"/> when <paramref name="yaml"/> is <c>null</c> or whitespace.
+    /// </returns>
+    [Pure]
+    string FixTabsInIndentation(string? yaml);
 }

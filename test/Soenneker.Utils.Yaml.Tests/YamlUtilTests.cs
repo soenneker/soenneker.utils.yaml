@@ -163,6 +163,39 @@ public sealed class YamlUtilTests : HostedUnitTest
     }
 
     [Test]
+    public void FixTabsInIndentation_with_leading_tabs_replaces_tabs_with_spaces()
+    {
+        string yaml = "root:\n" +
+                      "\tchild: value\n" +
+                      "  \tgrandChild: value\n" +
+                      "  description: \"keeps\tcontent tabs\"";
+
+        string result = _util.FixTabsInIndentation(yaml);
+
+        result.Should()
+              .Contain("  child: value")
+              .And.Contain("    grandChild: value")
+              .And.Contain("keeps\tcontent tabs");
+    }
+
+    [Test]
+    public void YamlToJson_with_tabs_in_multiline_double_quoted_scalar_returns_json()
+    {
+        string yaml = "root:\n" +
+                      "  description: \"The Description of Goods field is required\n" +
+                      "\t\t\t      for all UAE shipments, including Import, Export, and Domestic shipments.\n" +
+                      "      \t\t\tThis requirement applies to both Document and Non-Document shipments.\"\n" +
+                      "  type: string";
+
+        string? result = _util.YamlToJson(yaml);
+
+        result.Should()
+              .Contain("description")
+              .And.Contain("for all UAE shipments")
+              .And.Contain("Non-Document shipments");
+    }
+
+    [Test]
     public void IsValidYaml_valid_yaml_returns_true()
     {
         const string yaml = "key: value";
