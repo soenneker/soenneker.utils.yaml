@@ -154,8 +154,7 @@ public sealed class YamlUtil : IYamlUtil
     public async ValueTask SaveAsJson(string sourcePath, string destinationPath, bool log = true, CancellationToken cancellationToken = default)
     {
         string content = await _fileUtil.Read(sourcePath, log, cancellationToken).NoSync();
-        string fixedYaml = FixForJson(content);
-        string json = YamlToJson(fixedYaml) ?? "{}";
+        string json = YamlToJson(content) ?? "{}";
         await _fileUtil.Write(destinationPath, json, log, cancellationToken).NoSync();
     }
 
@@ -164,36 +163,7 @@ public sealed class YamlUtil : IYamlUtil
         if (string.IsNullOrWhiteSpace(yaml))
             return string.Empty;
 
-        string text = FixTabsInIndentation(yaml);
-        string[] lines = text.Split('\n');
-
-        var output = new List<string>(lines.Length);
-
-        for (int i = 0; i < lines.Length; i++)
-        {
-            string line = lines[i];
-            output.Add(line);
-
-            if (!IsBlockScalarHeader(line, out int headerIndent))
-                continue;
-
-            int j = i + 1;
-
-            while (j < lines.Length && IsWhitespaceOnly(lines[j]))
-            {
-                j++;
-            }
-
-            if (j >= lines.Length)
-                continue;
-
-            if (CountLeadingSpaces(lines[j]) > headerIndent)
-            {
-                i = j - 1;
-            }
-        }
-
-        return string.Join('\n', output);
+        return FixTabsInIndentation(yaml);
     }
 
     public string FixTabsInIndentation(string? yaml)
