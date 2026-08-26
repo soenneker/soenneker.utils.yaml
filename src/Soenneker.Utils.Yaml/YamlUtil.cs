@@ -171,113 +171,53 @@ public sealed class YamlUtil : IYamlUtil
         if (string.IsNullOrWhiteSpace(yaml))
             return string.Empty;
 
-        if (yaml[0] == '\uFEFF')
-            yaml = yaml[1..];
+        var requiresNormalization = yaml[0] == '\uFEFF';
+        var atLineStart = true;
 
-        string text = yaml.Replace("\r\n", "\n").Replace('\r', '\n');
-        string[] lines = text.Split('\n');
-
-        for (var i = 0; i < lines.Length; i++)
+        for (var i = 0; i < yaml.Length && !requiresNormalization; i++)
         {
-            lines[i] = FixTabsInLineIndentation(lines[i]);
+            char c = yaml[i];
+            requiresNormalization = c == '\r' || (atLineStart && c == '\t');
+
+            if (c == '\n')
+                atLineStart = true;
+            else if (c != ' ' && c != '\t')
+                atLineStart = false;
         }
 
-        return string.Join('\n', lines);
-    }
+        if (!requiresNormalization)
+            return yaml;
 
-    private static bool IsBlockScalarHeader(string line, out int indent)
-    {
-        indent = 0;
+        using var builder = new PooledStringBuilder(yaml.Length);
+        atLineStart = true;
 
-        if (string.IsNullOrEmpty(line))
-            return false;
-
-        indent = CountLeadingSpaces(line);
-        ReadOnlySpan<char> span = line.AsSpan(indent);
-
-        int colonIndex = span.IndexOf(':');
-        if (colonIndex < 0)
-            return false;
-
-        ReadOnlySpan<char> afterColon = span[(colonIndex + 1)..].TrimStart();
-
-        if (afterColon.IsEmpty)
-            return false;
-
-        char c = afterColon[0];
-        if (c is not ('|' or '>'))
-            return false;
-
-        if (afterColon.Length == 1)
-            return true;
-
-        char second = afterColon[1];
-        return second is '-' or '+' or '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9' or ' ' or '\t' or '#';
-    }
-
-    private static int CountLeadingSpaces(string value)
-    {
-        int i = 0;
-
-        while (i < value.Length && value[i] == ' ')
+        for (int i = yaml[0] == '\uFEFF' ? 1 : 0; i < yaml.Length; i++)
         {
-            i++;
-        }
+            char c = yaml[i];
 
-        return i;
-    }
-
-    private static bool IsWhitespaceOnly(string value)
-    {
-        for (int i = 0; i < value.Length; i++)
-        {
-            if (!char.IsWhiteSpace(value[i]))
-                return false;
-        }
-
-        return true;
-    }
-
-    private static string FixTabsInLineIndentation(string line)
-    {
-        var index = 0;
-        var hasTab = false;
-
-        while (index < line.Length)
-        {
-            char c = line[index];
-
-            if (c == '\t')
+            if (c == '\r')
             {
-                hasTab = true;
-                index++;
-                continue;
+                builder.Append('\n');
+                if (i + 1 < yaml.Length && yaml[i + 1] == '\n')
+                    i++;
+                atLineStart = true;
             }
-
-            if (c == ' ')
+            else if (c == '\n')
             {
-                index++;
-                continue;
+                builder.Append(c);
+                atLineStart = true;
             }
-
-            break;
-        }
-
-        if (!hasTab)
-            return line;
-
-        using var builder = new PooledStringBuilder(line.Length + index);
-
-        for (var i = 0; i < index; i++)
-        {
-            if (line[i] == '\t')
+            else if (atLineStart && c == '\t')
+            {
                 builder.Append(TabIndentReplacement);
+            }
             else
-                builder.Append(line[i]);
+            {
+                builder.Append(c);
+                if (c != ' ')
+                    atLineStart = false;
+            }
         }
-
-        if (index < line.Length)
-            builder.Append(line.AsSpan(index));
 
         return builder.ToString();
     }
