@@ -45,7 +45,7 @@
 
     <ItemGroup>
         <PackageReference Include="Soenneker.Extensions.JsonElements" Version="4.0.76" />
-        <PackageReference Include="Soenneker.Utils.PooledStringBuilders" Version="4.0.27" />
+        <PackageReference Include="Soenneker.Utils.PooledStringBuilders" Version="4.0.28" />
         <PackageReference Include="Soenneker.Utils.Json" Version="4.0.2645" />
         <PackageReference Include="YamlDotNet" Version="18.1.0" />
     </ItemGroup>
