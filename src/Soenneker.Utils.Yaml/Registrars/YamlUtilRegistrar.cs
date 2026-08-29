@@ -13,6 +13,7 @@ public static class YamlUtilRegistrar
     /// <summary>
     /// Adds <see cref="IYamlUtil"/> as a singleton service. <para/>
     /// </summary>
+    /// <returns>Adds <see cref="IYamlUtil"/> as a singleton service. <para/>.</returns>
     public static IServiceCollection AddYamlUtilAsSingleton(this IServiceCollection services)
     {
         services.AddFileUtilAsSingleton()
@@ -24,6 +25,7 @@ public static class YamlUtilRegistrar
     /// <summary>
     /// Adds <see cref="IYamlUtil"/> as a scoped service. <para/>
     /// </summary>
+    /// <returns>Adds <see cref="IYamlUtil"/> as a scoped service. <para/>.</returns>
     public static IServiceCollection AddYamlUtilAsScoped(this IServiceCollection services)
     {
         services.AddFileUtilAsScoped()

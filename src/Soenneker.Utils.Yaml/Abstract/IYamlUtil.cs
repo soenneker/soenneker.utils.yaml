@@ -111,6 +111,7 @@ public interface IYamlUtil
     /// <param name="destinationPath">Path where the YAML output is written.</param>
     /// <param name="log">Whether to log the file operations.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>Reads a JSON file and writes the content as YAML to the destination path.</returns>
     ValueTask SaveAsYaml(string sourcePath, string destinationPath, bool log = true, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -120,13 +121,14 @@ public interface IYamlUtil
     /// <param name="destinationPath">Path where the JSON output is written.</param>
     /// <param name="log">Whether to log the file operations.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>Reads a YAML file and writes the content as JSON to the destination path.</returns>
     ValueTask SaveAsJson(string sourcePath, string destinationPath, bool log = true, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Executes the normalize operation.
+    /// Parses YAML and emits a consistently formatted representation.
     /// </summary>
-    /// <param name="yaml">The yaml.</param>
-    /// <returns>The result of the operation.</returns>
+    /// <param name="yaml">The YAML text.</param>
+    /// <returns>Normalized YAML.</returns>
     string Normalize(string? yaml);
 
     /// <summary>
