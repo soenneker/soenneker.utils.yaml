@@ -23,10 +23,10 @@ services.AddYamlUtilAsSingleton(); // or AddYamlUtilAsScoped()
 Use `IYamlUtil` for YAML/JSON conversion and validation:
 
 - **ToYaml(object)** – Serialize any object to a YAML string.
-- **FromYaml&lt;T&gt;(string)** – Deserialize YAML to a typed instance.
+- **`FromYaml<T>(string)`** - Deserializes YAML to a typed instance.
 - **FromYaml(string)** – Deserialize YAML to an untyped object (dictionary/list).
 - **JsonToYaml(string)** – Convert a JSON string to YAML.
 - **YamlToJson(string)** – Convert a YAML string to JSON.
 - **FixTabsInIndentation(string)** – Convert tab indentation to YAML-safe spaces.
 - **IsValidYaml(string)** – Return whether the string is valid YAML.
-- **TryFromYaml&lt;T&gt;(string, out T?)** – Try to deserialize YAML to `T`.
+- **`TryFromYaml<T>(string, out T?)`** - Attempts deserialization without throwing for invalid YAML.
