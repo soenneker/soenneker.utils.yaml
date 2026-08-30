@@ -125,10 +125,10 @@ public interface IYamlUtil
     ValueTask SaveAsJson(string sourcePath, string destinationPath, bool log = true, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Parses YAML and emits a consistently formatted representation.
+    /// Removes a leading byte-order mark, normalizes line endings, and replaces indentation tabs with spaces.
     /// </summary>
     /// <param name="yaml">The YAML text.</param>
-    /// <returns>Normalized YAML.</returns>
+    /// <returns>The text-normalized YAML, or <see cref="string.Empty"/> for null or whitespace input.</returns>
     string Normalize(string? yaml);
 
     /// <summary>

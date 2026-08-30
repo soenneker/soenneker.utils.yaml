@@ -21,7 +21,6 @@ using YamlDotNet.Serialization.NamingConventions;
 
 namespace Soenneker.Utils.Yaml;
 
-///<inheritdoc cref="IYamlUtil"/>
 public sealed class YamlUtil : IYamlUtil
 {
     private const string TabIndentReplacement = "  ";
