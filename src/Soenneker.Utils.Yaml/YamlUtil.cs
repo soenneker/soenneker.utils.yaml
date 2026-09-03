@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -162,7 +163,135 @@ public sealed class YamlUtil : IYamlUtil
         if (string.IsNullOrWhiteSpace(yaml))
             return string.Empty;
 
-        return FixTabsInIndentation(yaml);
+        string normalized = FixTabsInIndentation(yaml);
+        return NormalizeYamlLines(normalized);
+    }
+
+    private static string NormalizeYamlLines(string yaml)
+    {
+        string[] lines = yaml.Split('\n');
+        StringBuilder? builder = null;
+        bool inDoubleQuotedScalar = false;
+        int blockScalarIndent = -1;
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            string original = lines[i];
+            int indentation = CountLeadingWhitespace(original);
+            bool inBlockScalar = blockScalarIndent >= 0 && (string.IsNullOrWhiteSpace(original) || indentation > blockScalarIndent);
+
+            if (blockScalarIndent >= 0 && !inBlockScalar)
+                blockScalarIndent = -1;
+
+            string normalized = string.IsNullOrWhiteSpace(original) ? string.Empty : inDoubleQuotedScalar || inBlockScalar
+                ? original
+                : QuoteUnsafePlainMappingScalar(original);
+
+            if (!inBlockScalar && IsBlockScalarHeader(original))
+                blockScalarIndent = indentation;
+
+            if (!inBlockScalar && HasOddUnescapedDoubleQuoteCount(original))
+                inDoubleQuotedScalar = !inDoubleQuotedScalar;
+
+            if (builder == null && !string.Equals(original, normalized, StringComparison.Ordinal))
+            {
+                builder = new StringBuilder(yaml.Length + 16);
+                for (int previous = 0; previous < i; previous++)
+                    builder.Append(lines[previous]).Append('\n');
+            }
+
+            if (builder != null)
+            {
+                builder.Append(normalized);
+                if (i < lines.Length - 1)
+                    builder.Append('\n');
+            }
+        }
+
+        return builder?.ToString() ?? yaml;
+    }
+
+    private static int CountLeadingWhitespace(string line)
+    {
+        int count = 0;
+        while (count < line.Length && char.IsWhiteSpace(line[count]))
+            count++;
+        return count;
+    }
+
+    private static bool IsBlockScalarHeader(string line)
+    {
+        int separator = line.IndexOf(':');
+        if (separator < 0)
+            return false;
+
+        string value = line[(separator + 1)..].Trim();
+        return value is "|" or "|-" or "|+" or ">" or ">-" or ">+";
+    }
+
+    private static bool HasOddUnescapedDoubleQuoteCount(string line)
+    {
+        int count = 0;
+
+        for (int i = 0; i < line.Length; i++)
+        {
+            if (line[i] != '"')
+                continue;
+
+            int precedingBackslashes = 0;
+            for (int previous = i - 1; previous >= 0 && line[previous] == '\\'; previous--)
+                precedingBackslashes++;
+
+            if (precedingBackslashes % 2 == 0)
+                count++;
+        }
+
+        return count % 2 != 0;
+    }
+
+    private static string QuoteUnsafePlainMappingScalar(string line)
+    {
+        int contentStart = 0;
+        while (contentStart < line.Length && char.IsWhiteSpace(line[contentStart]))
+            contentStart++;
+
+        if (contentStart >= line.Length || line[contentStart] == '#')
+            return line;
+
+        if (line[contentStart] == '-' && contentStart + 1 < line.Length && char.IsWhiteSpace(line[contentStart + 1]))
+        {
+            contentStart++;
+            while (contentStart < line.Length && char.IsWhiteSpace(line[contentStart]))
+                contentStart++;
+        }
+
+        int separator = line.IndexOf(':', contentStart);
+        if (separator < 0 || separator + 1 >= line.Length || !char.IsWhiteSpace(line[separator + 1]))
+            return line;
+
+        for (int i = contentStart; i < separator; i++)
+        {
+            if (char.IsWhiteSpace(line[i]))
+                return line;
+        }
+
+        int valueStart = separator + 1;
+        while (valueStart < line.Length && char.IsWhiteSpace(line[valueStart]))
+            valueStart++;
+
+        if (valueStart >= line.Length || line[valueStart] is '\'' or '"' or '|' or '>' or '[' or '{' or '&' or '*' or '!' or '#')
+            return line;
+
+        int unsafeColon = line.IndexOf(": ", valueStart, StringComparison.Ordinal);
+        if (unsafeColon < 0)
+            return line;
+
+        int commentStart = line.IndexOf(" #", valueStart, StringComparison.Ordinal);
+        string value = (commentStart >= 0 ? line[valueStart..commentStart] : line[valueStart..]).TrimEnd();
+        string comment = commentStart >= 0 ? line[commentStart..] : string.Empty;
+        string quoted = JsonSerializer.Serialize(value);
+
+        return string.Concat(line.AsSpan(0, valueStart), quoted, comment);
     }
 
     public string FixTabsInIndentation(string? yaml)

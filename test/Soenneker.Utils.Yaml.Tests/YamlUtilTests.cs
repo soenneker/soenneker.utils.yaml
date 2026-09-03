@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using System.Text.Json;
 using Soenneker.Utils.Yaml.Abstract;
 using Soenneker.Tests.HostedUnit;
 using Soenneker.Utils.Yaml.Tests.Dtos;
@@ -193,6 +194,36 @@ public sealed class YamlUtilTests : HostedUnitTest
               .Contain("description")
               .And.Contain("for all UAE shipments")
               .And.Contain("Non-Document shipments");
+    }
+
+    [Test]
+    public void YamlToJson_with_colon_in_plain_mapping_scalar_quotes_the_value()
+    {
+        const string yaml = """
+                            properties:
+                              type:
+                                description: For `type: pool`, this is the pool name.
+                                type: string
+                            """;
+
+        string result = _util.YamlToJson(yaml)!;
+        using JsonDocument document = JsonDocument.Parse(result);
+
+        document.RootElement.GetProperty("properties").GetProperty("type").GetProperty("description").GetString().Should()
+                .Be("For `type: pool`, this is the pool name.");
+        document.RootElement.GetProperty("properties").GetProperty("type").GetProperty("type").GetString().Should()
+                .Be("string");
+    }
+
+    [Test]
+    public void YamlToJson_with_whitespace_only_first_literal_line_preserves_the_scalar()
+    {
+        const string yaml = "info:\n  description: |\n  \n    Paperless document description.";
+
+        string result = _util.YamlToJson(yaml)!;
+
+        result.Should()
+              .Contain("Paperless document description.");
     }
 
     [Test]
