@@ -170,23 +170,27 @@ public sealed class YamlUtil : IYamlUtil
 
     private static string NormalizeYamlLines(string yaml)
     {
-        string[] lines = yaml.Split('\n');
         StringBuilder? builder = null;
         bool inDoubleQuotedScalar = false;
         int blockScalarIndent = -1;
+        int lineStart = 0;
 
-        for (int i = 0; i < lines.Length; i++)
+        while (lineStart <= yaml.Length)
         {
-            string original = lines[i];
+            int relativeNewLine = yaml.AsSpan(lineStart).IndexOf('\n');
+            bool hasNewLine = relativeNewLine >= 0;
+            int lineEnd = hasNewLine ? lineStart + relativeNewLine : yaml.Length;
+            ReadOnlySpan<char> original = yaml.AsSpan(lineStart, lineEnd - lineStart);
             int indentation = CountLeadingWhitespace(original);
-            bool inBlockScalar = blockScalarIndent >= 0 && (string.IsNullOrWhiteSpace(original) || indentation > blockScalarIndent);
+            bool isWhitespace = original.IsWhiteSpace();
+            bool inBlockScalar = blockScalarIndent >= 0 && (isWhitespace || indentation > blockScalarIndent);
 
             if (blockScalarIndent >= 0 && !inBlockScalar)
                 blockScalarIndent = -1;
 
-            string normalized = string.IsNullOrWhiteSpace(original) ? string.Empty : inDoubleQuotedScalar || inBlockScalar
-                ? original
-                : QuoteUnsafePlainMappingScalar(original);
+            string? normalized = isWhitespace
+                ? original.Length == 0 ? null : string.Empty
+                : inDoubleQuotedScalar || inBlockScalar ? null : QuoteUnsafePlainMappingScalar(original);
 
             if (!inBlockScalar && IsBlockScalarHeader(original))
                 blockScalarIndent = indentation;
@@ -194,25 +198,33 @@ public sealed class YamlUtil : IYamlUtil
             if (!inBlockScalar && HasOddUnescapedDoubleQuoteCount(original))
                 inDoubleQuotedScalar = !inDoubleQuotedScalar;
 
-            if (builder == null && !string.Equals(original, normalized, StringComparison.Ordinal))
+            if (builder == null && normalized is not null)
             {
                 builder = new StringBuilder(yaml.Length + 16);
-                for (int previous = 0; previous < i; previous++)
-                    builder.Append(lines[previous]).Append('\n');
+                builder.Append(yaml.AsSpan(0, lineStart));
             }
 
             if (builder != null)
             {
-                builder.Append(normalized);
-                if (i < lines.Length - 1)
+                if (normalized is null)
+                    builder.Append(original);
+                else
+                    builder.Append(normalized);
+
+                if (hasNewLine)
                     builder.Append('\n');
             }
+
+            if (!hasNewLine)
+                break;
+
+            lineStart = lineEnd + 1;
         }
 
         return builder?.ToString() ?? yaml;
     }
 
-    private static int CountLeadingWhitespace(string line)
+    private static int CountLeadingWhitespace(ReadOnlySpan<char> line)
     {
         int count = 0;
         while (count < line.Length && char.IsWhiteSpace(line[count]))
@@ -220,17 +232,18 @@ public sealed class YamlUtil : IYamlUtil
         return count;
     }
 
-    private static bool IsBlockScalarHeader(string line)
+    private static bool IsBlockScalarHeader(ReadOnlySpan<char> line)
     {
         int separator = line.IndexOf(':');
         if (separator < 0)
             return false;
 
-        string value = line[(separator + 1)..].Trim();
-        return value is "|" or "|-" or "|+" or ">" or ">-" or ">+";
+        ReadOnlySpan<char> value = line[(separator + 1)..].Trim();
+        return value.SequenceEqual("|") || value.SequenceEqual("|-") || value.SequenceEqual("|+") ||
+               value.SequenceEqual(">") || value.SequenceEqual(">-") || value.SequenceEqual(">+");
     }
 
-    private static bool HasOddUnescapedDoubleQuoteCount(string line)
+    private static bool HasOddUnescapedDoubleQuoteCount(ReadOnlySpan<char> line)
     {
         int count = 0;
 
@@ -250,14 +263,14 @@ public sealed class YamlUtil : IYamlUtil
         return count % 2 != 0;
     }
 
-    private static string QuoteUnsafePlainMappingScalar(string line)
+    private static string? QuoteUnsafePlainMappingScalar(ReadOnlySpan<char> line)
     {
         int contentStart = 0;
         while (contentStart < line.Length && char.IsWhiteSpace(line[contentStart]))
             contentStart++;
 
         if (contentStart >= line.Length || line[contentStart] == '#')
-            return line;
+            return null;
 
         if (line[contentStart] == '-' && contentStart + 1 < line.Length && char.IsWhiteSpace(line[contentStart + 1]))
         {
@@ -266,14 +279,15 @@ public sealed class YamlUtil : IYamlUtil
                 contentStart++;
         }
 
-        int separator = line.IndexOf(':', contentStart);
+        int separatorRelative = line[contentStart..].IndexOf(':');
+        int separator = separatorRelative < 0 ? -1 : contentStart + separatorRelative;
         if (separator < 0 || separator + 1 >= line.Length || !char.IsWhiteSpace(line[separator + 1]))
-            return line;
+            return null;
 
         for (int i = contentStart; i < separator; i++)
         {
             if (char.IsWhiteSpace(line[i]))
-                return line;
+                return null;
         }
 
         int valueStart = separator + 1;
@@ -281,18 +295,19 @@ public sealed class YamlUtil : IYamlUtil
             valueStart++;
 
         if (valueStart >= line.Length || line[valueStart] is '\'' or '"' or '|' or '>' or '[' or '{' or '&' or '*' or '!' or '#')
-            return line;
+            return null;
 
-        int unsafeColon = line.IndexOf(": ", valueStart, StringComparison.Ordinal);
+        int unsafeColon = line[valueStart..].IndexOf(": ", StringComparison.Ordinal);
         if (unsafeColon < 0)
-            return line;
+            return null;
 
-        int commentStart = line.IndexOf(" #", valueStart, StringComparison.Ordinal);
-        string value = (commentStart >= 0 ? line[valueStart..commentStart] : line[valueStart..]).TrimEnd();
-        string comment = commentStart >= 0 ? line[commentStart..] : string.Empty;
-        string quoted = JsonSerializer.Serialize(value);
+        int relativeCommentStart = line[valueStart..].IndexOf(" #", StringComparison.Ordinal);
+        int commentStart = relativeCommentStart < 0 ? -1 : valueStart + relativeCommentStart;
+        ReadOnlySpan<char> value = (commentStart >= 0 ? line[valueStart..commentStart] : line[valueStart..]).TrimEnd();
+        ReadOnlySpan<char> comment = commentStart >= 0 ? line[commentStart..] : ReadOnlySpan<char>.Empty;
+        string quoted = JsonSerializer.Serialize(value.ToString());
 
-        return string.Concat(line.AsSpan(0, valueStart), quoted, comment);
+        return string.Concat(line[..valueStart], quoted, comment);
     }
 
     public string FixTabsInIndentation(string? yaml)
