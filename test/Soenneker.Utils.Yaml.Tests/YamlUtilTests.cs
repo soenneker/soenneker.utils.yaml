@@ -17,6 +17,38 @@ public sealed class YamlUtilTests : HostedUnitTest
     }
 
     [Test]
+    public void YamlToJson_preserves_flow_mapping_examples()
+    {
+        const string yaml = """
+                            example:
+                              - {'index': 0, 'document': {'text': '{"title":"Llama","text":"Example"}'}}
+                              - {'index': 2, 'document': {'text': 'Another example'}}
+                            """;
+
+        _util.Normalize(yaml).Should().Be(yaml);
+        using JsonDocument document = JsonDocument.Parse(_util.YamlToJson(yaml)!);
+        JsonElement examples = document.RootElement.GetProperty("example");
+        examples.GetArrayLength().Should().Be(2);
+        examples[0].GetProperty("index").GetInt32().Should().Be(0);
+        examples[0].GetProperty("document").GetProperty("text").GetString().Should().Be("""{"title":"Llama","text":"Example"}""");
+    }
+
+    [Test]
+    public void YamlToJson_preserves_quotes_inside_plain_and_multiline_scalars()
+    {
+        const string yaml = """
+                            summary: A plain scalar containing a " quote
+                            description: "Question fields:\n
+                              `id`: The question ID\n        - `type`: `single_choice` or `multiple_choice`\n"
+                            """;
+
+        _util.Normalize(yaml).Should().Be(yaml);
+        using JsonDocument document = JsonDocument.Parse(_util.YamlToJson(yaml)!);
+        document.RootElement.GetProperty("description").GetString().Should().Contain("`id`: The question ID");
+        document.RootElement.GetProperty("summary").GetString().Should().Be("A plain scalar containing a \" quote");
+    }
+
+    [Test]
     public void ToYaml_null_returns_empty_string()
     {
         string result = _util.ToYaml(null!);

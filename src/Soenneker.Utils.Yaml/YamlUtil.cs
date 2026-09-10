@@ -22,7 +22,6 @@ using YamlDotNet.Serialization.NamingConventions;
 
 namespace Soenneker.Utils.Yaml;
 
-/// <inheritdoc cref="IYamlUtil" />
 public sealed class YamlUtil : IYamlUtil
 {
     private const string TabIndentReplacement = "  ";
@@ -165,6 +164,11 @@ public sealed class YamlUtil : IYamlUtil
             return string.Empty;
 
         string normalized = FixTabsInIndentation(yaml);
+        // Repair heuristics cannot safely interpret every YAML scalar or flow collection.
+        // Preserve valid documents instead of rewriting their content as plain mappings.
+        if (IsValidYaml(normalized))
+            return normalized;
+
         return NormalizeYamlLines(normalized);
     }
 

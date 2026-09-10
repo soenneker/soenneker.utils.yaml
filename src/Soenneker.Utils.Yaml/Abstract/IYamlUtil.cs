@@ -126,6 +126,7 @@ public interface IYamlUtil
 
     /// <summary>
     /// Removes a leading byte-order mark, normalizes line endings, and replaces indentation tabs with spaces.
+    /// Preserves valid YAML content and only applies scalar repair heuristics when the normalized text is invalid.
     /// </summary>
     /// <param name="yaml">The YAML text.</param>
     /// <returns>The text-normalized YAML, or <see cref="string.Empty"/> for null or whitespace input.</returns>
