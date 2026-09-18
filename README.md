@@ -57,7 +57,9 @@ YAML mappings can have non-string keys, aliases, and recursive object graphs tha
 
 `YamlToJson(yaml, options)` uses caller-supplied `JsonSerializerOptions`. The overload without options uses the package's web-oriented System.Text.Json configuration.
 
-`FixForJson` performs the same YAML parsing and JSON-safe graph conversion, then serializes the result back to YAML. It can therefore change scalar types, mapping-key representation, and alias structure; it is not a text-only cleanup.
+Both `YamlToJson` overloads validate the normalized YAML as a single document. Duplicate mapping keys, additional documents, and deserialization recursion beyond 128 levels throw. Scalar repair and indentation normalization still apply before parsing. The same checks apply to `SaveAsJson`, which calls `YamlToJson`.
+
+`FixForJson` normalizes YAML, converts its object graph to a JSON-safe shape, and serializes the result back to YAML. It can therefore change scalar types, mapping-key representation, and alias structure; it is not a text-only cleanup. The stricter document checks described above apply to `YamlToJson`, not `FixForJson`.
 
 ## Validate and try-deserialize
 
@@ -85,4 +87,4 @@ await yamlUtil.SaveAsJson("settings.yaml", "settings.json", cancellationToken: c
 
 File conversion reads the complete source, converts it in memory, and writes the destination through `IFileUtil`. The destination write is not transactional; use a temporary destination and replace the target after validation when partial or failed conversions must not overwrite an existing file.
 
-No conversion method enforces input-size, nesting-depth, or alias-count limits beyond those of the underlying parsers. Constrain untrusted YAML and JSON before processing when resource exhaustion is a concern.
+`YamlToJson` and `SaveAsJson` enforce a 128-level deserialization recursion limit. Other operations retain the underlying parsers' limits; no operation adds an input-size or alias-count limit.

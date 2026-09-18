@@ -17,6 +17,8 @@ using Soenneker.Utils.File.Abstract;
 using Soenneker.Utils.Json;
 using Soenneker.Utils.PooledStringBuilders;
 using Soenneker.Utils.Yaml.Abstract;
+using YamlDotNet.Core;
+using YamlDotNet.Core.Events;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -33,6 +35,13 @@ public sealed class YamlUtil : IYamlUtil
                                                                                    .WithAttemptingUnquotedStringTypeDeserialization()
                                                                                    .IgnoreUnmatchedProperties()
                                                                                    .Build();
+
+    private static readonly IDeserializer _jsonDeserializer = new DeserializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance)
+                                                                                       .WithAttemptingUnquotedStringTypeDeserialization()
+                                                                                       .IgnoreUnmatchedProperties()
+                                                                                       .WithDuplicateKeyChecking()
+                                                                                       .WithMaximumRecursion(128)
+                                                                                       .Build();
 
     private readonly IFileUtil _fileUtil;
 
@@ -82,7 +91,7 @@ public sealed class YamlUtil : IYamlUtil
         if (yaml.IsNullOrWhiteSpace())
             return "{}";
 
-        object? obj = FromYaml(Normalize(yaml));
+        object? obj = DeserializeForJson(yaml);
         object? jsonSafe = YamlObjectToJsonSafe(obj);
 
         return JsonUtil.Serialize(jsonSafe, optionType: JsonOptionType.Web, JsonLibraryType.SystemTextJson);
@@ -104,10 +113,20 @@ public sealed class YamlUtil : IYamlUtil
         if (yaml.IsNullOrWhiteSpace())
             return "{}";
 
-        object? obj = FromYaml(Normalize(yaml));
+        object? obj = DeserializeForJson(yaml);
         object? jsonSafe = YamlObjectToJsonSafe(obj);
 
         return JsonSerializer.Serialize(jsonSafe, options);
+    }
+
+    private object? DeserializeForJson(string yaml)
+    {
+        using var reader = new StringReader(Normalize(yaml));
+        var parser = new Parser(reader);
+        parser.Consume<StreamStart>();
+        object? result = _jsonDeserializer.Deserialize<object>(parser);
+        parser.Consume<StreamEnd>();
+        return result;
     }
 
     public bool IsValidYaml(string? yaml)

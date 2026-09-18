@@ -1,8 +1,11 @@
 using AwesomeAssertions;
+using System;
+using System.Text;
 using System.Text.Json;
 using Soenneker.Utils.Yaml.Abstract;
 using Soenneker.Tests.HostedUnit;
 using Soenneker.Utils.Yaml.Tests.Dtos;
+using YamlDotNet.Core;
 
 namespace Soenneker.Utils.Yaml.Tests;
 
@@ -14,6 +17,57 @@ public sealed class YamlUtilTests : HostedUnitTest
     public YamlUtilTests(Host host) : base(host)
     {
         _util = Resolve<IYamlUtil>(true);
+    }
+
+    [Test]
+    [Arguments(false, "root:\n  name: first\n  name: second")]
+    [Arguments(true, "root:\n  name: first\n  name: second")]
+    [Arguments(false, "root: {name: first, name: second}")]
+    [Arguments(true, "root: {name: first, name: second}")]
+    [Arguments(false, "name: first\n---\nname: second")]
+    [Arguments(true, "name: first\n---\nname: second")]
+    public void YamlToJson_rejects_ambiguous_documents(bool customOptions, string yaml)
+    {
+        Action convert = () => ConvertYaml(yaml, customOptions);
+        convert.Should().Throw<YamlException>();
+    }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public void YamlToJson_limits_deserialization_recursion(bool customOptions)
+    {
+        var yaml = new StringBuilder();
+        for (int level = 0; level < 200; level++)
+            yaml.Append(' ', level * 2).AppendLine("nested:");
+        yaml.Append(' ', 400).Append("value: end");
+
+        Action convert = () => ConvertYaml(yaml.ToString(), customOptions);
+        convert.Should().Throw<YamlException>();
+    }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public void YamlToJson_preserves_normalization_scalars_and_aliases(bool customOptions)
+    {
+        const string yaml = """
+                            description: Supports `kind: example` values.
+                            original: &sample
+                              count: 7
+                              enabled: true
+                            alias: *sample
+                            """;
+
+        using JsonDocument json = JsonDocument.Parse(ConvertYaml(yaml, customOptions));
+        json.RootElement.GetProperty("description").GetString().Should().Be("Supports `kind: example` values.");
+        json.RootElement.GetProperty("alias").GetProperty("count").GetInt32().Should().Be(7);
+        json.RootElement.GetProperty("alias").GetProperty("enabled").GetBoolean().Should().BeTrue();
+    }
+
+    private string ConvertYaml(string yaml, bool customOptions)
+    {
+        return customOptions ? _util.YamlToJson(yaml, new JsonSerializerOptions { WriteIndented = true }) : _util.YamlToJson(yaml)!;
     }
 
     [Test]

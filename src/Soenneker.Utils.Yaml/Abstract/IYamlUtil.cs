@@ -52,12 +52,17 @@ public interface IYamlUtil
     string? JsonToYaml(string? json);
 
     /// <summary>
-    /// Converts YAML to JSON using default web-oriented JSON serializer options.
+    /// Converts a single YAML document to JSON using default web-oriented JSON serializer options.
     /// </summary>
     /// <param name="yaml">The YAML payload.</param>
     /// <returns>
     /// A JSON string, or <c>{}</c> when <paramref name="yaml"/> is <c>null</c> or whitespace.
     /// </returns>
+    /// <remarks>
+    /// Normalizes the input before conversion. Rejects duplicate mapping keys, additional YAML documents,
+    /// and deserialization recursion beyond 128 levels instead of silently discarding data.
+    /// </remarks>
+    /// <exception cref="YamlDotNet.Core.YamlException">The normalized YAML is invalid, ambiguous, or exceeds the recursion limit.</exception>
     [Pure]
     string? YamlToJson(string? yaml);
 
@@ -73,13 +78,18 @@ public interface IYamlUtil
     string FixForJson(string? yaml);
 
     /// <summary>
-    /// Converts YAML to JSON using the specified <see cref="JsonSerializerOptions"/>.
+    /// Converts a single YAML document to JSON using the specified <see cref="JsonSerializerOptions"/>.
     /// </summary>
     /// <param name="yaml">The YAML payload.</param>
     /// <param name="options">The serializer options to use.</param>
     /// <returns>
     /// A JSON string, or <c>{}</c> when <paramref name="yaml"/> is <c>null</c> or whitespace.
     /// </returns>
+    /// <remarks>
+    /// Uses the same normalization, duplicate-key checks, single-document requirement, and 128-level
+    /// deserialization recursion limit as <see cref="YamlToJson(string?)"/>.
+    /// </remarks>
+    /// <exception cref="YamlDotNet.Core.YamlException">The normalized YAML is invalid, ambiguous, or exceeds the recursion limit.</exception>
     [Pure]
     string YamlToJson(string? yaml, JsonSerializerOptions options);
 
