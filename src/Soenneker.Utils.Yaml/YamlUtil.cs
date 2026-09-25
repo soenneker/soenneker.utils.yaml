@@ -94,7 +94,7 @@ public sealed class YamlUtil : IYamlUtil
         object? obj = DeserializeForJson(yaml);
         object? jsonSafe = YamlObjectToJsonSafe(obj);
 
-        return JsonUtil.Serialize(jsonSafe, optionType: JsonOptionType.Web, JsonLibraryType.SystemTextJson);
+        return jsonSafe is null ? null : JsonUtil.Serialize(jsonSafe, LibraryJsonContext.Get<object>());
     }
 
     public string FixForJson(string? yaml)
