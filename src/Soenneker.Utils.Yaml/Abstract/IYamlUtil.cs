@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Serialization.Metadata;
 using System.Diagnostics.Contracts;
 using System.Text.Json;
 using System.Threading;
@@ -10,6 +12,30 @@ namespace Soenneker.Utils.Yaml.Abstract;
 /// </summary>
 public interface IYamlUtil
 {
+    /// <summary>Serializes a value to YAML using generated JSON metadata, without reflection.</summary>
+    /// <remarks>Uses the supplied JSON property names, converters, and inclusion rules. YAML-specific model attributes are not used.</remarks>
+    /// <typeparam name="T">The model type.</typeparam>
+    /// <param name="value">The value to serialize.</param>
+    /// <param name="typeInfo">Generated JSON metadata for the model.</param>
+    /// <returns>YAML, or an empty string for null.</returns>
+    string ToYaml<T>(T value, JsonTypeInfo<T> typeInfo);
+
+    /// <summary>Deserializes one YAML document through generated JSON metadata without reflection.</summary>
+    /// <remarks>Uses JSON model conventions and the same validation as YamlToJson, including duplicate-key and recursion checks.</remarks>
+    /// <typeparam name="T">The model type.</typeparam>
+    /// <param name="yaml">The YAML document.</param>
+    /// <param name="typeInfo">Generated JSON metadata for the model.</param>
+    /// <returns>The model, or default for empty input.</returns>
+    T? FromYaml<T>(string? yaml, JsonTypeInfo<T> typeInfo);
+
+    /// <summary>Attempts to deserialize YAML using generated JSON metadata.</summary>
+    /// <typeparam name="T">The model type.</typeparam>
+    /// <param name="yaml">The YAML document.</param>
+    /// <param name="typeInfo">Generated JSON metadata for the model.</param>
+    /// <param name="result">The model on success.</param>
+    /// <returns>False for empty or invalid YAML/JSON data. Missing metadata remains a configuration error.</returns>
+    bool TryFromYaml<T>(string? yaml, JsonTypeInfo<T> typeInfo, out T? result);
+
     /// <summary>
     /// Serializes an object graph to YAML.
     /// </summary>
@@ -18,6 +44,8 @@ public interface IYamlUtil
     /// A YAML string, or <see cref="string.Empty"/> when <paramref name="value"/> is <c>null</c>.
     /// </returns>
     [Pure]
+    [RequiresUnreferencedCode("Reflection-based YAML serialization requires preserved model members. Use the overload accepting JsonTypeInfo<T> for AOT.")]
+    [RequiresDynamicCode("Reflection-based YAML serialization requires runtime generic construction. Use the overload accepting JsonTypeInfo<T> for AOT.")]
     string ToYaml(object? value);
 
     /// <summary>
@@ -29,6 +57,8 @@ public interface IYamlUtil
     /// The deserialized value, or <c>default</c> when <paramref name="yaml"/> is <c>null</c> or whitespace.
     /// </returns>
     [Pure]
+    [RequiresUnreferencedCode("Reflection-based YAML serialization requires preserved model members. Use the overload accepting JsonTypeInfo<T> for AOT.")]
+    [RequiresDynamicCode("Reflection-based YAML serialization requires runtime generic construction. Use the overload accepting JsonTypeInfo<T> for AOT.")]
     T? FromYaml<T>(string? yaml);
 
     /// <summary>
@@ -112,6 +142,8 @@ public interface IYamlUtil
     /// <returns>
     /// <c>true</c> if deserialization succeeds; otherwise <c>false</c>.
     /// </returns>
+    [RequiresUnreferencedCode("Reflection-based YAML serialization requires preserved model members. Use the overload accepting JsonTypeInfo<T> for AOT.")]
+    [RequiresDynamicCode("Reflection-based YAML serialization requires runtime generic construction. Use the overload accepting JsonTypeInfo<T> for AOT.")]
     bool TryFromYaml<T>(string? yaml, out T? result);
 
     /// <summary>

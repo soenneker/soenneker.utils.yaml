@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Serialization.Metadata;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
@@ -26,20 +28,14 @@ public sealed class YamlUtil : IYamlUtil
 {
     private const string TabIndentReplacement = "  ";
 
-    private static readonly ISerializer _serializer = new SerializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance)
-                                                                             .Build();
-
-    private static readonly IDeserializer _deserializer = new DeserializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance)
-                                                                                   .WithAttemptingUnquotedStringTypeDeserialization()
-                                                                                   .IgnoreUnmatchedProperties()
-                                                                                   .Build();
-
-    private static readonly IDeserializer _jsonDeserializer = new DeserializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance)
-                                                                                       .WithAttemptingUnquotedStringTypeDeserialization()
-                                                                                       .IgnoreUnmatchedProperties()
-                                                                                       .WithDuplicateKeyChecking()
-                                                                                       .WithMaximumRecursion(128)
-                                                                                       .Build();
+    private static readonly ISerializer _graphSerializer = new StaticSerializerBuilder(new YamlGraphContext())
+        .WithNamingConvention(CamelCaseNamingConvention.Instance).Build();
+    private static readonly IDeserializer _deserializer = new StaticDeserializerBuilder(new YamlGraphContext())
+        .WithNamingConvention(CamelCaseNamingConvention.Instance).WithAttemptingUnquotedStringTypeDeserialization()
+        .IgnoreUnmatchedProperties().Build();
+    private static readonly IDeserializer _jsonDeserializer = new StaticDeserializerBuilder(new YamlGraphContext())
+        .WithNamingConvention(CamelCaseNamingConvention.Instance).WithAttemptingUnquotedStringTypeDeserialization()
+        .IgnoreUnmatchedProperties().WithDuplicateKeyChecking().WithMaximumRecursion(128).Build();
 
     private readonly IFileUtil _fileUtil;
 
@@ -48,22 +44,67 @@ public sealed class YamlUtil : IYamlUtil
         _fileUtil = fileUtil;
     }
 
+    [RequiresUnreferencedCode("Reflection-based YAML serialization requires preserved model members. Use the overload accepting JsonTypeInfo<T> for AOT.")]
+    [RequiresDynamicCode("Reflection-based YAML serialization requires runtime generic construction. Use the overload accepting JsonTypeInfo<T> for AOT.")]
     public string ToYaml(object? value)
     {
         if (value is null)
             return string.Empty;
 
         using var writer = new StringWriter(CultureInfo.InvariantCulture);
-        _serializer.Serialize(writer, value);
+        new SerializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance).Build().Serialize(writer, value);
         return writer.ToString();
     }
 
+    [RequiresUnreferencedCode("Reflection-based YAML serialization requires preserved model members. Use the overload accepting JsonTypeInfo<T> for AOT.")]
+    [RequiresDynamicCode("Reflection-based YAML serialization requires runtime generic construction. Use the overload accepting JsonTypeInfo<T> for AOT.")]
     public T? FromYaml<T>(string? yaml)
     {
         if (yaml.IsNullOrWhiteSpace())
             return default;
 
-        return _deserializer.Deserialize<T>(yaml);
+        return new DeserializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance).WithAttemptingUnquotedStringTypeDeserialization().IgnoreUnmatchedProperties().Build().Deserialize<T>(yaml);
+    }
+
+    public string ToYaml<T>(T value, JsonTypeInfo<T> typeInfo)
+    {
+        ArgumentNullException.ThrowIfNull(typeInfo);
+        if (value is null)
+            return string.Empty;
+        JsonElement element = JsonSerializer.SerializeToElement(value, typeInfo);
+        return SerializeGraph(element.JsonElementToObject());
+    }
+
+    public T? FromYaml<T>(string? yaml, JsonTypeInfo<T> typeInfo)
+    {
+        ArgumentNullException.ThrowIfNull(typeInfo);
+        if (string.IsNullOrWhiteSpace(yaml))
+            return default;
+        return JsonSerializer.Deserialize(YamlToJson(yaml) ?? "null", typeInfo);
+    }
+
+    public bool TryFromYaml<T>(string? yaml, JsonTypeInfo<T> typeInfo, out T? result)
+    {
+        ArgumentNullException.ThrowIfNull(typeInfo);
+        result = default;
+        if (string.IsNullOrWhiteSpace(yaml))
+            return false;
+        try
+        {
+            result = FromYaml(yaml, typeInfo);
+            return true;
+        }
+        catch (YamlException) { return false; }
+        catch (JsonException) { return false; }
+    }
+
+    private static string SerializeGraph(object? graph)
+    {
+        if (graph is null)
+            return string.Empty;
+        using var writer = new StringWriter(CultureInfo.InvariantCulture);
+        _graphSerializer.Serialize(writer, graph);
+        return writer.ToString();
     }
 
     public object? FromYaml(string? yaml)
@@ -81,7 +122,7 @@ public sealed class YamlUtil : IYamlUtil
 
         using JsonDocument doc = JsonDocument.Parse(json);
         object? graph = doc.RootElement.JsonElementToObject();
-        return ToYaml(graph);
+        return SerializeGraph(graph);
     }
 
     public string? YamlToJson(string? yaml)
@@ -103,7 +144,7 @@ public sealed class YamlUtil : IYamlUtil
         object? obj = FromYaml(Normalize(yaml));
         object? jsonSafe = YamlObjectToJsonSafe(obj);
 
-        return ToYaml(jsonSafe);
+        return SerializeGraph(jsonSafe);
     }
 
     public string YamlToJson(string? yaml, JsonSerializerOptions options)
@@ -114,7 +155,7 @@ public sealed class YamlUtil : IYamlUtil
         object? obj = DeserializeForJson(yaml);
         object? jsonSafe = YamlObjectToJsonSafe(obj);
 
-        return JsonSerializer.Serialize(jsonSafe, options);
+        return JsonSerializer.Serialize(jsonSafe, (JsonTypeInfo<object?>)new LibraryJsonContext(new JsonSerializerOptions(options)).GetTypeInfo(typeof(object))!);
     }
 
     private object? DeserializeForJson(string yaml)
@@ -143,6 +184,8 @@ public sealed class YamlUtil : IYamlUtil
         }
     }
 
+    [RequiresUnreferencedCode("Reflection-based YAML serialization requires preserved model members. Use the overload accepting JsonTypeInfo<T> for AOT.")]
+    [RequiresDynamicCode("Reflection-based YAML serialization requires runtime generic construction. Use the overload accepting JsonTypeInfo<T> for AOT.")]
     public bool TryFromYaml<T>(string? yaml, out T? result)
     {
         result = default;
@@ -152,7 +195,7 @@ public sealed class YamlUtil : IYamlUtil
 
         try
         {
-            result = _deserializer.Deserialize<T>(yaml);
+            result = new DeserializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance).WithAttemptingUnquotedStringTypeDeserialization().IgnoreUnmatchedProperties().Build().Deserialize<T>(yaml);
             return true;
         }
         catch
@@ -326,7 +369,7 @@ public sealed class YamlUtil : IYamlUtil
         int commentStart = relativeCommentStart < 0 ? -1 : valueStart + relativeCommentStart;
         ReadOnlySpan<char> value = (commentStart >= 0 ? line[valueStart..commentStart] : line[valueStart..]).TrimEnd();
         ReadOnlySpan<char> comment = commentStart >= 0 ? line[commentStart..] : ReadOnlySpan<char>.Empty;
-        string quoted = JsonSerializer.Serialize(value.ToString());
+        string quoted = JsonSerializer.Serialize(value.ToString(), LibraryJsonContext.Get<string>());
 
         return string.Concat(line[..valueStart], quoted, comment);
     }
