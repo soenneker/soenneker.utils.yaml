@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Soenneker.Extensions.JsonElements;
 using Soenneker.Extensions.String;
 using Soenneker.Extensions.Task;
+using Soenneker.Extensions.ValueTask;
 using Soenneker.Utils.File.Abstract;
 using Soenneker.Utils.Json;
 using Soenneker.Utils.PooledStringBuilders;
@@ -165,14 +166,14 @@ public sealed class YamlUtil : IYamlUtil
     {
         string content = await _fileUtil.Read(sourcePath, log, cancellationToken).NoSync();
         string yaml = JsonToYaml(content) ?? string.Empty;
-        await _fileUtil.Write(destinationPath, yaml, log, cancellationToken).NoSync();
+        await _fileUtil.WriteAtomically(destinationPath, yaml, log, cancellationToken).NoSync();
     }
 
     public async ValueTask SaveAsJson(string sourcePath, string destinationPath, bool log = true, CancellationToken cancellationToken = default)
     {
         string content = await _fileUtil.Read(sourcePath, log, cancellationToken).NoSync();
         string json = YamlToJson(content) ?? "{}";
-        await _fileUtil.Write(destinationPath, json, log, cancellationToken).NoSync();
+        await _fileUtil.WriteAtomically(destinationPath, json, log, cancellationToken).NoSync();
     }
 
     public string Normalize(string? yaml)
