@@ -61,6 +61,8 @@ public interface IYamlUtil
     /// <remarks>
     /// Normalizes the input before conversion. Rejects duplicate mapping keys, additional YAML documents,
     /// and deserialization recursion beyond 128 levels instead of silently discarding data.
+    /// Recursive aliases in OpenAPI schemas become component references instead of null values.
+    /// Cycles outside schema locations in an OpenAPI document are rejected.
     /// </remarks>
     /// <exception cref="YamlDotNet.Core.YamlException">The normalized YAML is invalid, ambiguous, or exceeds the recursion limit.</exception>
     [Pure]

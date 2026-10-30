@@ -390,6 +390,12 @@ public sealed class YamlUtil : IYamlUtil
 
     private static object? YamlObjectToJsonSafe(object? value)
     {
+        if (value is IDictionary document && (document.Contains("openapi") || document.Contains("swagger")) &&
+            YamlOpenApiSchemaNormalizer.Normalize(document) is { } normalized)
+        {
+            using JsonDocument json = JsonDocument.Parse(normalized.ToJsonString());
+            return json.RootElement.JsonElementToObject();
+        }
         return YamlObjectToJsonSafe(value, new HashSet<object>(ReferenceEqualityComparer.Instance));
     }
 
